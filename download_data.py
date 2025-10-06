@@ -39,3 +39,5 @@ print("Cleaning up...")
 zip_path.unlink()
 
 print(f"Done! Files extracted to {dest}")
+
+print ("hello world")
