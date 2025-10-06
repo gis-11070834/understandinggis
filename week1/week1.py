@@ -52,4 +52,4 @@ graticule.plot(
 my_ax.axis('off')
 # save the result
 savefig('week1/out/1.png')
-print("done!")
+print("done!") 
