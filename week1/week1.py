@@ -13,14 +13,14 @@ my_fig, my_ax = subplots(1, 1, figsize=(16, 10))
 # add bounding box and graticule layers
 bbox.plot(
     ax = my_ax,
-    color = 'lightgray',
+    color = 'lightblue',
     linewidth = 0,
     )
 
 # plot the countries
 world.plot(
     ax = my_ax,
-    color = 'black',
+    color = 'darkgreen',
     linewidth = 0.5,
     )
 
