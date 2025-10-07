@@ -44,3 +44,9 @@ print(type(mex_col))
 
 mex_geom = mex_col.iloc[0]
 print(type(mex_geom))
+
+# the .intersection() function finds the intersection between the two geometries stores in the new variable border
+# calculate the intersection of the geometry objects
+border = usa_geom.intersection(mex_geom)
+
+print(border)
