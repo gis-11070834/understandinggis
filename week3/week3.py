@@ -72,5 +72,18 @@ print(f"Filtered wells: {len(precise_matches.index)}")
 # this needs to be done as we have reduced the amount of data but the spatial index still has the original amount
 # rebuild the spatial index using the new, smaller dataset
 geoms = precise_matches.geometry.to_list()
-
 idx = STRtree(geoms)
+
+# NEAREST NEIGHBOUR ANALYSIS WITH STRtree (and iterating through a GDF)
+distance = []
+
+for id, house in pop_points.iterrows():
+   # use the spatial index to get the index of the closest well
+   nearest_well_index = idx.nearest(house.geometry)
+   # use the spatial index to get the closest well object from the original dataset
+	nearest_well = water_points.iloc[nearest_well_index]
+    # store the distance to the nearest well
+    distances.append(distance(house.geometry.x, house.geometry.y, nearest_well.x, nearest_well.y))
+
+print(f"distance: {len(distance.append)}")
+    
