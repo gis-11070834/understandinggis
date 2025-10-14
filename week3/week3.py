@@ -67,3 +67,10 @@ precise_matches = possible_matches.loc[possible_matches.within(polygon)]
 
 # how many rows are left now?
 print(f"Filtered wells: {len(precise_matches.index)}")
+
+# REBUILDING SPATIAL INDEX
+# this needs to be done as we have reduced the amount of data but the spatial index still has the original amount
+# rebuild the spatial index using the new, smaller dataset
+geoms = precise_matches.geometry.to_list()
+
+idx = STRtree(geoms)
