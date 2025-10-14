@@ -20,6 +20,9 @@ pop_points = read_file("../../data/gulu/pop_points.shp")
 water_points = read_file("../../data/gulu/water_points.shp")
 gulu_district = read_file("../../data/gulu/district.shp")
 
+# read in the `water_points` dataset AND transform it the the same CRS as `pop_points`
+water_points = read_file("../../data/gulu/water_points.shp").to_crs(pop_points.crs)
+
 print(pop_points.crs.to_epsg())
 print(water_points.crs.to_epsg())
 print(gulu_district.crs.to_epsg())
