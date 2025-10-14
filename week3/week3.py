@@ -38,3 +38,32 @@ geoms = water_points.geometry.to_list()
 # initialise an instance of an STRtree using the geometries - store in idx variable creating a tree of the geometry
 # loads the list into a STRtree() object --> the STRtree constructor then calculates the bounding box for each geometry and loads it into the RTree spatial index
 idx = STRtree(geoms)
+
+#1. retrive the polygon geometry using the .iloc[0] (get the dataset at index location 0 - only row in table) and reoprt the number of boreholes in the dataset using a print() statement and f-string
+# get the one and only polygon from the district dataset
+polygon = gulu_district.geometry.iloc[0]
+
+# how many rows are we starting with?
+print(f"Initial wells: {len(water_points.index)}")
+
+#2. use the .query() function of your STRtree object to return a list of borehold IDs that intersect the district polygon
+# get the indexes of wells that intersect bounds of the district
+possible_matches_index = idx.query(polygon)
+
+#3. use the resulting list to query the water_points GDF using .iloc
+# this time we are passing a list of index numbers to it, rather than just a single one as in step 1
+# report the number of boreholes that meet this critera
+# use those indexes to extract the possible matches from the GeoDataFrame
+possible_matches = water_points.iloc[possible_matches_index]
+
+# how many rows are left now? 
+# we use index (list of ID numbers that correspond to each row) normally as its guaranteed in every dataset
+print(f"Filtered wells: {len(possible_matches.index)}")
+
+#4. use the smaller data set to do the precise (but slower) within query which gives Boolean values back (true, false) for whether its within the wor
+# then search the possible matches for precise matches using the slower but more precise method
+# need to use .loc instead of .iloc as it can take boolean input (.iloc only takes index numbers)
+precise_matches = possible_matches.loc[possible_matches.within(polygon)]
+
+# how many rows are left now?
+print(f"Filtered wells: {len(precise_matches.index)}")
