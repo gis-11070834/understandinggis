@@ -85,3 +85,15 @@ for id, house in pop_points.iterrows():
    distances.append(distance(house.geometry.x, house.geometry.y, nearest_well.x, nearest_well.y))
 
 print(f"distance: {len(distances)}")
+print(distances[:5])
+
+# store distance to nearest well
+pop_points['nearest_well'] = distances
+print(pop_points.columns)
+
+#calculate the mean distance
+mean = (sum(distances)/(len(distances)))
+
+print(f"Minimum distance to water in Gulu District: {min(distances):,.0f}m.")
+print(f"Mean distance to water in Gulu District: {mean:,.0f}m.")
+print(f"Maximum distance to water in Gulu District: {max(distances):,.0f}m.")
