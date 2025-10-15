@@ -75,15 +75,13 @@ geoms = precise_matches.geometry.to_list()
 idx = STRtree(geoms)
 
 # NEAREST NEIGHBOUR ANALYSIS WITH STRtree (and iterating through a GDF)
-distance = []
+distances = []
 
 for id, house in pop_points.iterrows():
    # use the spatial index to get the index of the closest well
    nearest_well_index = idx.nearest(house.geometry)
    # use the spatial index to get the closest well object from the original dataset
-	nearest_well = water_points.iloc[nearest_well_index]
-    # store the distance to the nearest well
-    distances.append(distance(house.geometry.x, house.geometry.y, nearest_well.x, nearest_well.y))
+   nearest_well = precise_matches.iloc[nearest_well_index].geometry.geoms[0]
+   distances.append(distance(house.geometry.x, house.geometry.y, nearest_well.x, nearest_well.y))
 
-print(f"distance: {len(distance.append)}")
-    
+print(f"distance: {len(distances)}")
