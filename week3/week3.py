@@ -43,7 +43,7 @@ idx = STRtree(geoms)
 
 #1. retrive the polygon geometry using the .iloc[0] (get the dataset at index location 0 - only row in table) and reoprt the number of boreholes in the dataset using a print() statement and f-string
 # get the one and only polygon from the district dataset
-polygon = gulu_district.geometry.iloc[0]
+polygon = gulu_district.geometry.iloc[0].buffer(10500)
 
 # how many rows are we starting with?
 print(f"Initial wells: {len(water_points.index)}")
