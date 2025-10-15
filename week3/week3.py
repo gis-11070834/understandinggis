@@ -124,7 +124,7 @@ pop_points.plot(
     column = 'nearest_well',
     linewidth = 0,
 	markersize = 1,
-    cmap = 'RdYlBu_r',
+    cmap = 'RdYlBu',
     scheme = 'quantiles',
     legend = 'True',
     legend_kwds = {
