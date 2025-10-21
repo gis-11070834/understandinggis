@@ -35,14 +35,11 @@ def get_effective_area(a, b, c):
 # 2 arguments - node_list is the list of points that need to be simplified and n_node is number of nodes returned in the simplified list
 def visvalingam_whyatt(node_list, n_nodes):
     #loop through each node, excluding the end points
-    areas = []
-    for i in range(1, len(node_list)-1):
-
-        # get the effective area
-        area = get_effective_area(node_list[i-1], node_list[i], node_list[i+1])	# COMPLETE THIS LINE
-
-        # append the node and effective area to the list
-        areas.append({"point": node_list[i], "area": area})
+    
+    areas = [
+    {"point": node_list[i], "area": get_effective_area(node_list[i-1], node_list[i], node_list[i+1])}
+    for i in range(1, len(node_list) - 1)
+    ]
     
     # add the end points back in at the start (0) and end (len(areas))
     areas.insert(0, {"point": node_list[0], "area": 0})
