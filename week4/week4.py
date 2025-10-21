@@ -1,10 +1,36 @@
 from geopandas import read_file
 from sys import exit
+from math import sqrt
 
 # set the percentage of nodes that you want to remove
 # done in capitals to mark it out --> done for variables defining settings or other definitions that wont be changed when the code runs
 # also done as a variable so it is easy to change if we want to change the level of simplification
 SIMPLIFICATION_PERC = 98
+
+# imoportant to have these as functions as they will be calld on many times - avoid repetition
+def distance(x1, y1, x2, y2):
+	return sqrt((x2-x1)**2 + (y2-y1)**2)
+
+# set function to get effective area
+def get_effective_area(a, b, c):
+	"""
+	* Calculate the area of a triangle made from the points a, b and c using Heron's formula
+	* 	https://en.wikipedia.org/wiki/Heron%27s_formula
+	"""
+	# calculate the length of each side
+	side_a = distance(b[0], b[1], c[0], c[1])
+	side_b = distance(a[0], a[1], c[0], c[1])
+	side_c = distance(a[0], a[1], b[0], b[1])
+
+	# calculate semi-perimeter of the triangle (perimeter / 2)
+	s = (side_a + side_b + side_c) / 2
+
+	# apply Heron's formula and return
+	return sqrt(s * (s - side_a) * (s - side_b) * (s - side_c))
+
+# creating a function of the VW algorithm
+# 2 arguments - node_list is the list of points that need to be simplified and n_node is number of nodes returned in the simplified list
+def visvalingam_whyatt(node_list, n_nodes):
 
 # open a dataset of all countries in the world
 world = read_file("../../data/natural-earth/ne_10m_admin_0_countries.shp")
