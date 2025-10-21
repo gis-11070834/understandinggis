@@ -16,3 +16,22 @@ print(f"geometry type: {uk.geom_type}")
 if uk.geom_type != 'MultiPolygon':
   print("Geometry is not a MultiPolygon, exiting...")
   exit()
+  
+# initialise variables to hold the coordinates and area of the largest polygon
+biggest_area = 0
+coord_list = []
+
+# loop through each polygon in the multipolygon and find the biggest (mainland Great Britain)
+for poly in uk.geoms:
+
+	# if it is the biggest so far
+	if poly.area > biggest_area:	# COMPLETE THIS LINE
+    
+		# store the new value for biggest area
+		biggest_area = poly.area
+        
+     # store the coordinates of the polygon
+		coord_list = list(poly.boundary.coords)	# COMPLETE THIS LINE (look at the variables that you defined before the loop)
+
+print(coord_list)
+print(biggest_area)
