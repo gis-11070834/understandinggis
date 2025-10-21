@@ -44,6 +44,9 @@ def visvalingam_whyatt(node_list, n_nodes):
     areas.insert(0, {"point": node_list[0], "area": 0})
     areas.insert(len(areas), {"point": node_list[len(node_list)-1], "area": 0})
     
+    # take a copy of the list so that we don't edit the original
+    nodes = areas.copy()
+    
     print(len(node_list))
     print(len(areas))
 
