@@ -10,7 +10,6 @@ SIMPLIFICATION_PERC = 98
 # imoportant to have these as functions as they will be calld on many times - avoid repetition
 def distance(x1, y1, x2, y2):
 	return sqrt((x2-x1)**2 + (y2-y1)**2)
-
 # set function to get effective area
 def get_effective_area(a, b, c):
 	"""
@@ -31,6 +30,22 @@ def get_effective_area(a, b, c):
 # creating a function of the VW algorithm
 # 2 arguments - node_list is the list of points that need to be simplified and n_node is number of nodes returned in the simplified list
 def visvalingam_whyatt(node_list, n_nodes):
+    #loop through each node, excluding the end points
+    areas = []
+    for i in range(1, len(node_list)-1):
+
+        # get the effective area
+        area = get_effective_area(node_list[i-1], node_list[i], node_list[i+1])	# COMPLETE THIS LINE
+
+        # append the node and effective area to the list
+        areas.append({"point": node_list[i], "area": area})
+    
+    # add the end points back in at the start (0) and end (len(areas))
+    areas.insert(0, {"point": node_list[0], "area": 0})
+    areas.insert(len(areas), {"point": node_list[len(node_list)-1], "area": 0})
+    
+    print(len(node_list))
+    print(len(areas))
 
 # open a dataset of all countries in the world
 world = read_file("../../data/natural-earth/ne_10m_admin_0_countries.shp")
@@ -70,3 +85,8 @@ n_nodes = int(len(coord_list) / 100.0 * (100 - SIMPLIFICATION_PERC))
 # ensure that there are at least 3 nodes (minimum for a polygon)
 if n_nodes < 3:
 	n_nodes = 3 
+    
+# remove one node and overwrite it with the new, shorter list
+simplified_nodes = visvalingam_whyatt(coord_list, n_nodes)
+
+
