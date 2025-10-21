@@ -36,6 +36,9 @@ def get_effective_area(a, b, c):
 def visvalingam_whyatt(node_list, n_nodes):
     #loop through each node, excluding the end points
     
+    # list comprehension version of loop - builds a list of dictionaries in one line
+    # the expression before for indicates what to use and the for loop iterates through the middle nodes
+    # this replaces the need for a loop through .append() and makes it more efficient
     areas = [
     {"point": node_list[i], "area": get_effective_area(node_list[i-1], node_list[i], node_list[i+1])}
     for i in range(1, len(node_list) - 1)
@@ -68,11 +71,19 @@ def visvalingam_whyatt(node_list, n_nodes):
         nodes.pop(node_to_delete)
     
         # recalculate effective area to the left of the deleted node
-        nodes[node_to_delete-1]['area'] = get_effective_area(nodes[node_to_delete-2]['point'], nodes[node_to_delete-1]['point'],nodes[node_to_delete]['point'])	# COMPLETE THIS LINE
+        nodes[node_to_delete-1]['area'] = get_effective_area(
+            nodes[node_to_delete-2]['point'], 
+            nodes[node_to_delete-1]['point'],
+            nodes[node_to_delete]['point']
+            )	# COMPLETE THIS LINE
 
         # if there is a node to the right of the deleted node, recalculate the effective area
         if node_to_delete < len(nodes)-1:
-            nodes[node_to_delete]['area'] = get_effective_area(nodes[node_to_delete-1]['point'], nodes[node_to_delete]['point'], nodes[node_to_delete+1]['point'])		# COMPLETE THIS LINE 
+            nodes[node_to_delete]['area'] = get_effective_area(
+                nodes[node_to_delete-1]['point'],
+                nodes[node_to_delete]['point'],
+                nodes[node_to_delete+1]['point']
+                )		# COMPLETE THIS LINE 
     
     # extract the nodes and return
     return [ node['point'] for node in nodes ]
