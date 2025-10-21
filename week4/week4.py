@@ -10,6 +10,7 @@ SIMPLIFICATION_PERC = 98
 # imoportant to have these as functions as they will be calld on many times - avoid repetition
 def distance(x1, y1, x2, y2):
 	return sqrt((x2-x1)**2 + (y2-y1)**2)
+
 # set function to get effective area
 def get_effective_area(a, b, c):
 	"""
@@ -47,8 +48,37 @@ def visvalingam_whyatt(node_list, n_nodes):
     # take a copy of the list so that we don't edit the original
     nodes = areas.copy()
     
-    print(len(node_list))
-    print(len(areas))
+    # keep going as long as the number of nodes is greater than the desired number
+    while len(nodes) > n_nodes:
+        
+        # create a variable for infinity to use in the for loop as we are finding the smallest number
+        min_area = float("inf")
+        node_to_delete = []
+        
+        # create a for loop that finds the point in nodes with the smallest effective area and store the index of the point in a variable called node_to_delete
+        for i in range(1, len(nodes)-1):
+            if nodes[i]["area"] < min_area:
+               # this is saying if the area in the smallest effective area loop is less than infinity then replace it and repeat until smallest one found
+                min_area = nodes[i]["area"]
+                print(min_area)
+                #store the index of the point with the smallest effective area in variable
+                node_to_delete = i
+                print(node_to_delete)
+                
+        # remove the current point from the list
+        nodes.pop(node_to_delete)
+        
+        print(len(nodes))
+    
+        # recalculate effective area to the left of the deleted node
+        nodes[node_to_delete-1]['area'] = get_effective_area(nodes[node_to_delete-2]['point'], nodes[node_to_delete-1]['point'],nodes[node_to_delete]['point'])	# COMPLETE THIS LINE
+
+        # if there is a node to the right of the deleted node, recalculate the effective area
+        if node_to_delete < len(nodes)-1:
+            nodes[node_to_delete]['area'] = get_effective_area(nodes[node_to_delete-1]['point'], nodes[node_to_delete]['point'], nodes[node_to_delete+1]['point'])		# COMPLETE THIS LINE 
+    
+    # extract the nodes and return
+    return [ node['point'] for node in nodes ]
 
 # open a dataset of all countries in the world
 world = read_file("../../data/natural-earth/ne_10m_admin_0_countries.shp")
