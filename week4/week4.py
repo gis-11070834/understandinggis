@@ -1,6 +1,7 @@
 from geopandas import read_file
 from sys import exit
 from math import sqrt
+from shapely.geometry import LineString
 
 # set the percentage of nodes that you want to remove
 # done in capitals to mark it out --> done for variables defining settings or other definitions that wont be changed when the code runs
@@ -60,15 +61,12 @@ def visvalingam_whyatt(node_list, n_nodes):
             if nodes[i]["area"] < min_area:
                # this is saying if the area in the smallest effective area loop is less than infinity then replace it and repeat until smallest one found
                 min_area = nodes[i]["area"]
-                print(min_area)
+                
                 #store the index of the point with the smallest effective area in variable
                 node_to_delete = i
-                print(node_to_delete)
                 
         # remove the current point from the list
         nodes.pop(node_to_delete)
-        
-        print(len(nodes))
     
         # recalculate effective area to the left of the deleted node
         nodes[node_to_delete-1]['area'] = get_effective_area(nodes[node_to_delete-2]['point'], nodes[node_to_delete-1]['point'],nodes[node_to_delete]['point'])	# COMPLETE THIS LINE
@@ -121,5 +119,16 @@ if n_nodes < 3:
     
 # remove one node and overwrite it with the new, shorter list
 simplified_nodes = visvalingam_whyatt(coord_list, n_nodes)
+
+# make a linestring out of the coordinates
+before_line = LineString(coord_list)
+print(f"original node count: {len(coord_list)}")
+print(f"original length: {before_line.length / 1000:.2f}km\n")
+
+# make the resulting list of coordinates into a line
+after_line = LineString(simplified_nodes)
+print(f"simplified node count: {len(simplified_nodes)}")
+print(f"simplified length: {after_line.length / 1000:.2f}km\n")
+
 
 
