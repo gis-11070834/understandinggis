@@ -1,6 +1,11 @@
 from geopandas import read_file
 from sys import exit
 
+# set the percentage of nodes that you want to remove
+# done in capitals to mark it out --> done for variables defining settings or other definitions that wont be changed when the code runs
+# also done as a variable so it is easy to change if we want to change the level of simplification
+SIMPLIFICATION_PERC = 98
+
 # open a dataset of all countries in the world
 world = read_file("../../data/natural-earth/ne_10m_admin_0_countries.shp")
 
@@ -33,5 +38,9 @@ for poly in uk.geoms:
      # store the coordinates of the polygon
 		coord_list = list(poly.boundary.coords)	# COMPLETE THIS LINE (look at the variables that you defined before the loop)
 
-print(coord_list)
-print(biggest_area)
+# how many nodes do we need?
+n_nodes = int(len(coord_list) / 100.0 * (100 - SIMPLIFICATION_PERC))
+
+# ensure that there are at least 3 nodes (minimum for a polygon)
+if n_nodes < 3:
+	n_nodes = 3 
