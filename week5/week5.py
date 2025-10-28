@@ -49,7 +49,7 @@ def evaluate_distortion(g, transformer, minx, miny, maxx, maxy, minr, maxr, samp
         # Calculating the area and shape distortion values
         # now that we have an ellipsoidal and projected circle we want to calculate the distortion value
         # done via a = (Si - S'i/Si + S'i)
-        area_indicies.append(abs((ellipsoidal_area - planar_area)/(ellipsoidal_area + planar_area)))
+        area_indicies.append(abs(ellipsoidal_area - planar_area) / (abs(ellipsoidal_area + planar_area)))
     
         # get radial distances from the centre to each of the 16 points on the circle
         ellipsoidal_radial_distances = [ hypot(centre_x - ex, centre_y - ey) for ex, ey in e_coords ]
@@ -60,8 +60,38 @@ def evaluate_distortion(g, transformer, minx, miny, maxx, maxy, minr, maxr, samp
         # append the sum of the list to the shape_indicies list
         shape_indicies.append(sum(shape_distortion))
         
-    print(len(area_indicies), len(shape_indicies))
+    #print(len(area_indicies), len(shape_indicies)) - checking the length of the indicies
+    
+    # Turn the list of indicies into a single value for the map
+    Ea = 1 / sample_number * sum(area_indicies)
+    Es = 1 / sample_number * sum(shape_indicies)
+    
+    print(Ea, Es)
+    
+    # find distance distortion
+    for _ in range(sample_number):
+        xs = uniform(low=minx, high=maxx, size=2)
+        ys = uniform(low=miny, high=maxy, size=2)
         
+        # calculate the distance along the ellipsoid
+        ellipsoidal_distance = g.line_length(xs, ys)
+        
+        #print(ellipsoidal_distance)
+   
+       # add two transformer.transform() statements to project both of your random locations
+        origin = transformer.transform(xs[0], ys[0], direction='FORWARD')
+        destination =  transformer.transform(xs[1], ys[1], direction='FORWARD')
+        planar_distance= hypot(origin[0] - destination [0], origin[1] - destination[1])
+        
+        #calculate distance index
+        distance_indicies.append(abs(ellipsoidal_distance - planar_distance) / (abs(ellipsoidal_distance + planar_distance)))
+        
+    # calculate Ep
+    Ep = 1 / sample_number * sum(distance_indicies)
+    
+    # calibrate and return all of the measures
+    return Ep, Es, Ea
+    
 # using __main__ to only run main code when needed, not when functions being called when code used as a library in future
 if __name__ == "__main__":
     
