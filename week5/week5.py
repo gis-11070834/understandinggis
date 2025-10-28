@@ -1,6 +1,6 @@
 from math import radians, cos, sin	# IMPORT NECESSARY FUNCTIONS HERE
 from geopandas import read_file
-from pyproj import Geod
+from pyproj import Geod, CRS, Transformer
 
 def compute_offset(origin, distance, direction):
     """
@@ -38,4 +38,11 @@ if __name__ == "__main__":
     {'name':"Albers' Conic", 'description':"Local Equal Area",  'proj':"+proj=aea +lon_0=-18.8085937 +lat_1=63.3985599 +lat_2=66.4577209 +lat_0=64.9281404 +datum=WGS84 +units=m +no_defs"}
    ]
     
-    
+    # loop through each CRS
+    # variable expansion - eneumerate() provides the count variable (in this case ax_num which contains values 0,1,2) and projection will contain the dictionary containing the current projection information
+   for ax_num, projection in enumerate(projections):
+        
+        #print(f"Processing projection {ax_num} {projection['name']}")
+        # initialise a PyProj Transformer to transform coordinates
+        transformer = Transformer.from_crs(CRS.from_proj4(geo_string), CRS.from_proj4(projection['proj']), always_xy=True)
+       
