@@ -1,4 +1,4 @@
-from math import radians, cos, sin	# IMPORT NECESSARY FUNCTIONS HERE
+from math import radians, cos, sin, hypot	# IMPORT NECESSARY FUNCTIONS HERE
 from geopandas import read_file
 from pyproj import Geod, CRS, Transformer
 from numpy.random import uniform
@@ -44,12 +44,12 @@ def evaluate_distortion(g, transformer, minx, miny, maxx, maxy, minr, maxr, samp
         # transform the centre point to the projected CRS
         centre_x, centre_y = transformer.transform(x, y, direction='FORWARD')
         # construct a circle around the projected point on a plane, calculate area
-        planar_area = Polygon([compute_offset(centre_x, centre_y, r, az) for az in forward_azimuths ]).area
+        planar_area = Polygon([compute_offset((centre_x, centre_y), r, az) for az in forward_azimuths]).area
     
         # Calculating the area and shape distortion values
         # now that we have an ellipsoidal and projected circle we want to calculate the distortion value
         # done via a = (Si - S'i/Si + S'i)
-        area_indices.append(abs((ellipsoidal_area - planar_area)/(ellipsoidal_area + planar_area)))
+        area_indicies.append(abs((ellipsoidal_area - planar_area)/(ellipsoidal_area + planar_area)))
     
         # get radial distances from the centre to each of the 16 points on the circle
         ellipsoidal_radial_distances = [ hypot(centre_x - ex, centre_y - ey) for ex, ey in e_coords ]
@@ -60,7 +60,7 @@ def evaluate_distortion(g, transformer, minx, miny, maxx, maxy, minr, maxr, samp
         # append the sum of the list to the shape_indicies list
         shape_indicies.append(sum(shape_distortion))
         
-    print(area_indicies, shape_indicies)
+    print(len(area_indicies), len(shape_indicies))
         
 # using __main__ to only run main code when needed, not when functions being called when code used as a library in future
 if __name__ == "__main__":
