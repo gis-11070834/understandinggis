@@ -1,5 +1,6 @@
 from math import radians, cos, sin	# IMPORT NECESSARY FUNCTIONS HERE
 from geopandas import read_file
+from pyproj import Geod
 
 def compute_offset(origin, distance, direction):
     """
@@ -24,5 +25,17 @@ if __name__ == "__main__":
   
    # get the bounds of the country
    minx, miny, maxx, maxy = iceland.total_bounds
-      
-   print(iceland.total_bounds)
+   
+   # DEFINING OUR GEODESIC MODEL AND CRS
+   # set the geographical proj string and ellipsoid (should be the same)
+   geo_string = "+proj=longlat +datum=WGS84 +no_defs"
+   g = Geod(ellps='WGS84')
+   
+   # create a list of dictionaries for the projected CRS' to evaluate for distortion
+   projections = [
+    {'name':"Web Mercator", 'description':"Global Conformal",   'proj':"+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs +type=crs"},
+    {'name':"Eckert IV",    'description':"Global Equal Area",  'proj':"+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"},
+    {'name':"Albers' Conic", 'description':"Local Equal Area",  'proj':"+proj=aea +lon_0=-18.8085937 +lat_1=63.3985599 +lat_2=66.4577209 +lat_0=64.9281404 +datum=WGS84 +units=m +no_defs"}
+   ]
+    
+    
