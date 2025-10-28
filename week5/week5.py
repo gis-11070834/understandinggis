@@ -2,6 +2,8 @@ from math import radians, cos, sin	# IMPORT NECESSARY FUNCTIONS HERE
 from geopandas import read_file
 from pyproj import Geod, CRS, Transformer
 from numpy.random import uniform
+from numpy import arange
+from shapely.geometry import Polygon
 
 def compute_offset(origin, distance, direction):
     """
@@ -11,8 +13,55 @@ def compute_offset(origin, distance, direction):
     offset_y = origin[1] + sin(radians(direction)) * distance	# COMPLETE THIS LINE 
     return (offset_x, offset_y)
 
+def evaluate_distortion(g, transformer, minx, miny, maxx, maxy, minr, maxr, sample_number=1000, vertices=16):
+   
+    # calculate the required number of random locations (x and y separately) plus radius
+    xs = uniform(low=minx, high=maxx, size=sample_number)
+    ys = uniform(low=miny, high=maxy, size=sample_number)
+    rs = uniform(low=minr, high=maxr, size=sample_number)
     
+    # offset distances
+    forward_azimuths = arange(0, 360, 22.5) # arrange function similar to range but permits non-integer
+    
+    # looping through out random points and radii
+    area_indicies = []
+    shape_indicies = []
+    distance_indicies = []
+    
+    for x, y, r in zip(xs, ys, rs):
+    
+        # building our random circles
+        # construct a circle around the centre point on the ellipsoid
+        lons, lats = g.fwd([x]*vertices, [y]*vertices, forward_azimuths, [r]*vertices)[:2]
+    
+        # project the result, calculate area, append to the list
+        # direction='FORWARD' means we transform from geographical to projected coordinates - would be 'BACKWARD' for opposite
+        e_coords = [ transformer.transform(lon, lat, direction='FORWARD') for lon, lat in zip(lons, lats) ]
+        # get the area of the resulting circle
+        ellipsoidal_area = Polygon(e_coords).area
+    
+        # create a circle on the projection plane
+        # transform the centre point to the projected CRS
+        centre_x, centre_y = transformer.transform(x, y, direction='FORWARD')
+        # construct a circle around the projected point on a plane, calculate area
+        planar_area = Polygon([compute_offset(centre_x, centre_y, r, az) for az in forward_azimuths ]).area
+    
+        # Calculating the area and shape distortion values
+        # now that we have an ellipsoidal and projected circle we want to calculate the distortion value
+        # done via a = (Si - S'i/Si + S'i)
+        area_indices.append(abs((ellipsoidal_area - planar_area)/(ellipsoidal_area + planar_area)))
+    
+        # get radial distances from the centre to each of the 16 points on the circle
+        ellipsoidal_radial_distances = [ hypot(centre_x - ex, centre_y - ey) for ex, ey in e_coords ]
 
+        # get the absolute proportional difference between the expected and actual radial distance for each 'spoke'
+        shape_distortion = [abs((1 / vertices) - (d / sum(ellipsoidal_radial_distances))) for d in ellipsoidal_radial_distances]
+        
+        # append the sum of the list to the shape_indicies list
+        shape_indicies.append(sum(shape_distortion))
+        
+    print(area_indicies, shape_indicies)
+        
 # using __main__ to only run main code when needed, not when functions being called when code used as a library in future
 if __name__ == "__main__":
     
