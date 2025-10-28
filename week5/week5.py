@@ -133,4 +133,13 @@ if __name__ == "__main__":
         
         # calculate the distortion
         Ep, Es, Ea = evaluate_distortion(g, transformer, minx, miny, maxx, maxy, 10000, 1000000, 1000)
-       
+    
+        #calculate ice area
+        ice_area_km2 = ice.to_crs(projection['proj']).geometry.area.sum() / 1000000
+   
+        # report to user
+        print(f"\n{projection['name']} ({projection['description']})")
+        print(f"\t{'Distance distortion (Ep):':<26}{Ep:.6f}")
+        print(f"\t{'Shape distortion (Es):':<26}{Es:.6f}")
+        print(f"\t{'Area distortion (Ea):':<26}{Ea:.6f}")
+        print(f"\t{'Ice Area:':<26}{ice_area_km2:,.0f} km sq.")
