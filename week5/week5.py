@@ -102,7 +102,7 @@ if __name__ == "__main__":
    # creating a geodataframe of the land cover in iceland
    land_cover = read_file ("../../data/iceland/gis_osm_natural_a_free_1.shp")
    # finding the areas covered in ice through finding rows = glacier
-   ice = world.loc[land_cover.fclass == "glacier"]
+   ice = land_cover.loc[land_cover.fclass == "glacier"]
    
   
    # get the bounds of the country
