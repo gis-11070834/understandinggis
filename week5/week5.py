@@ -4,6 +4,9 @@ from pyproj import Geod, CRS, Transformer
 from numpy.random import uniform
 from numpy import arange
 from shapely.geometry import Polygon
+from matplotlib.pyplot import subplots, savefig, subplots_adjust
+from matplotlib_scalebar.scalebar import ScaleBar
+from matplotlib.patches import Patch 
 
 def compute_offset(origin, distance, direction):
     """
@@ -91,6 +94,28 @@ def evaluate_distortion(g, transformer, minx, miny, maxx, maxy, minr, maxr, samp
     
     # calibrate and return all of the measures
     return Ep, Es, Ea
+
+def make_bounds_square(ax):
+    """
+    * Adjust the bounds of the specified axis to make them for to a square
+    """
+    # get the current bounds
+    ax_bounds_x = ax.get_xlim()
+    ax_bounds_y = ax.get_ylim()
+
+    # get the width and height
+    ax_width = ax_bounds_x[1] - ax_bounds_x[0]
+    ax_height = ax_bounds_y[1] - ax_bounds_y[0]
+    
+    # if width is larger, expand height to match
+    if ax_width > ax_height:
+        buffer = (ax_width - ax_height) / 2
+        my_axs[axx][axy].set_ylim((ax_bounds_y[0] - buffer, ax_bounds_y[1] + buffer))
+    
+    # if height is larger expand width to match
+    elif ax_width < ax_height:
+        buffer = (ax_height - ax_width) / 2
+        my_axs[axx][axy].set_xlim((ax_bounds_x[0] - buffer, ax_bounds_x[1] + buffer))
     
 # using __main__ to only run main code when needed, not when functions being called when code used as a library in future
 if __name__ == "__main__":
@@ -119,11 +144,20 @@ if __name__ == "__main__":
     {'name':"Eckert IV",    'description':"Global Equal Area",  'proj':"+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"},
     {'name':"Albers' Conic", 'description':"Local Equal Area",  'proj':"+proj=aea +lon_0=-18.8085937 +lat_1=63.3985599 +lat_2=66.4577209 +lat_0=64.9281404 +datum=WGS84 +units=m +no_defs"}
    ]
-    
+
+   # create a 2x2 figure
+   fig, my_axs = subplots(2, 2, figsize=(10, 10), constrained_layout=True)
+   fig.suptitle('How much Ice is in Iceland?\n', fontsize=20)
+   text = ""
+
    # CALCULATING DISTORTION FOR EACH PROJECTION
     # loop through each CRS
     # variable expansion - eneumerate() provides the count variable (in this case ax_num which contains values 0,1,2) and projection will contain the dictionary containing the current projection information
    for ax_num, projection in enumerate(projections):
+        
+        # get x and y position of current axis
+        axx = ax_num // my_axs.shape[0]
+        axy = ax_num % my_axs.shape[0]
         
         #print(f"Processing projection {ax_num} {projection['name']}")
         # initialise a PyProj Transformer to transform coordinates
@@ -143,3 +177,52 @@ if __name__ == "__main__":
         print(f"\t{'Shape distortion (Es):':<26}{Es:.6f}")
         print(f"\t{'Area distortion (Ea):':<26}{Ea:.6f}")
         print(f"\t{'Ice Area:':<26}{ice_area_km2:,.0f} km sq.")
+        
+        # append text for figure
+        text += f"{projection['name']+':':<13} $E_p={Ep:.4f}$  $E_s={Es:.4f}$  $E_a={Ea:.4f}$\n\n"
+
+        # disable axis, add title
+        my_axs[axx][axy].axis('off')
+        my_axs[axx][axy].set_facecolor('#000000')
+        my_axs[axx][axy].set_title(f"{projection['name']} ({projection['description']})\nIce area: {ice_area_km2:,.0f} km sq.")
+
+        # plot iceland
+        iceland.to_crs(projection['proj']).plot(
+            ax = my_axs[axx][axy],
+            color = "#b2df8a",
+            edgecolor = '#33a02c',
+            linewidth = 0.2,
+            )
+
+        # plot ice
+        ice.to_crs(projection['proj']).plot(
+            ax = my_axs[axx][axy],
+            color = "#e6f5f9",
+            edgecolor = "#e6f5f9",
+            linewidth = 0.1,
+            )
+
+        # add scalebar
+        my_axs[axx][axy].add_artist(ScaleBar(dx=1, units="m", location="lower right"))
+
+        # adjust the plot bounds to fit a square
+        make_bounds_square(my_axs[axx][axy])
+    
+    # disable axis on the empty axis
+   my_axs[1][1].axis('off')
+
+    # manually draw a legend to the empty axis
+   my_axs[1][1].legend([Patch(facecolor='#e6f5f9', edgecolor='#e6f5f9', label='Glacier')], ['Glacier'], loc='lower right')
+
+    # add north arrow to empty axis
+   x, y, arrow_length = 0.9, 0.3, 0.15
+   my_axs[1][1].annotate('N', xy=(x, y), xytext=(x, y-arrow_length),
+        arrowprops=dict(facecolor='black', width=3, headwidth=9),
+        ha='center', va='center', fontsize=16, xycoords=my_axs[1][1].transAxes)
+
+    # add the results to the empty axis - monospace font ensures table alignment
+   my_axs[1][1].text(0.1, 0.4, text, fontfamily='monospace')
+
+    # save the result
+   savefig('out/5.png', bbox_inches='tight')
+   print("done!")
