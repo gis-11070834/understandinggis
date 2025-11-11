@@ -1,6 +1,8 @@
 # importing the open function of rasterio and using the 'as' to rename it to less generic name
 from rasterio import open as rio_open
 from rasterio.transform import rowcol, xy
+from rasterio.plot import show as rio_show
+from matplotlib.pyplot import subplots, savefig
 
 def coord_2_img(transform, x, y):
 	""" 
@@ -16,7 +18,17 @@ with rio_open("../../data/helvellyn/Helvellyn-50.tif") as dem:
     # read the data out of band 1 in the dataset
     dem_data = dem.read(1)
     
-    # print out the elevation at that location by reading it from the dataset
-    print(f"{dem_data[coord_2_img(dem.transform, x, y)]:.0f}m")
+    # plot the dataset
+    fig, my_ax = subplots(1, 1, figsize=(16, 10))
+
+    # add the DEM
+    rio_show(
+        dem_data,
+        ax=my_ax,
+        transform = dem.transform,
+        )
+
+    # save the resulting map
+    savefig('./out/6.png', bbox_inches='tight')
   
 # once you leave the block, the file automatically closes for you
