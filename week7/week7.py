@@ -4,6 +4,7 @@ from rasterio.transform import rowcol, xy
 from rasterio.plot import show as rio_show
 from matplotlib.pyplot import subplots, savefig
 from numpy import zeros
+from matplotlib.colors import LinearSegmentedColormap
 
 def coord_2_img(transform, x, y):
 	""" 
@@ -36,7 +37,9 @@ rio_show(
 rio_show(
     output,
     ax=my_ax,
-    transform=dem.transform
+    transform=dem.transform,
+    cmap = LinearSegmentedColormap.from_list('binary',
+    [(0, 0, 0, 0), (0, 0.5, 1, 0.5)], N=2)
     )
 
 # save the resulting map
