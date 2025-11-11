@@ -23,6 +23,9 @@ with rio_open("../../data/helvellyn/Helvellyn-50.tif") as dem:
     # create a new 'band' of raster data the same size
     output = zeros(dem_data.shape)
     
+    # set the cell at coordinates of helvellyn to 1 to colour it in
+    dem_data[dem.index(334170, 515165)] = 1
+    
 # plot the dataset
 fig, my_ax = subplots(1, 1, figsize=(16, 10))
 
