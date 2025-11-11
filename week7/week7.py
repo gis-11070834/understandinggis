@@ -34,6 +34,7 @@ rio_show(
     dem_data,
     ax=my_ax,
     transform = dem.transform,
+    cmap = 'cividis'
     )
 
 # add the empty layer
