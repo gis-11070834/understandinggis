@@ -11,7 +11,8 @@ from rasterio.plot import show as rio_show
 from rasterio.transform import rowcol
 from matplotlib.pyplot import subplots, savefig
 from matplotlib.colors import LinearSegmentedColormap
-from skimage.draw import line
+from skimage.draw import line, circle_perimeter
+
 
 def coord_2_img(transform, x, y):
     """
@@ -40,9 +41,16 @@ with rio_open("../../data/helvellyn/Helvellyn-50.tif") as dem:
     # set the pixel at specified location to 1
     dem_data[dem.index(334170, 515165)] = 1
     
-    print(column_stack(line(row, col, row, col+50)))
+    # printing the coordinate pairs found in the line
+    # print(column_stack(line(row, col, row, col+50)))
     
+    # looping through each coordinate pair in the line
     for r, c in column_stack(line(row, col, row, col+50)):
+    
+        # transparant overlay created with 1(red) for each of the r,c coordinates
+        output[r, c] = 1
+        
+    for r, c in column_stack(circle_perimeter(row, col, 50)):
         
         output[r, c] = 1
 
