@@ -5,14 +5,13 @@ Created on Tue Nov 18 11:37:05 2025
 @author: k67630sc
 """
 
-from numpy import zeros
+from numpy import zeros, column_stack
 from rasterio import open as rio_open
 from rasterio.plot import show as rio_show
 from rasterio.transform import rowcol
 from matplotlib.pyplot import subplots, savefig
 from matplotlib.colors import LinearSegmentedColormap
-from geopandas import GeoSeries
-from shapely.geometry import Point
+from skimage.draw import line
 
 def coord_2_img(transform, x, y):
     """
@@ -40,6 +39,12 @@ with rio_open("../../data/helvellyn/Helvellyn-50.tif") as dem:
     
     # set the pixel at specified location to 1
     dem_data[dem.index(334170, 515165)] = 1
+    
+    print(column_stack(line(row, col, row, col+50)))
+    
+    for r, c in column_stack(line(row, col, row, col+50)):
+        
+        output[r, c] = 1
 
 # plot the dataset
 fig, my_ax = subplots(1, 1, figsize=(16, 10))
