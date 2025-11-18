@@ -5,6 +5,17 @@ from rasterio.transform import rowcol, xy
 from sys import exit
 from skimage.draw import line, circle_perimeter
 from math import hypot
+from math import floor, ceil
+from geopandas import GeoSeries
+from shapely.geometry import Point
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+from matplotlib.colors import Normalize
+from matplotlib.cm import ScalarMappable
+from rasterio.plot import show as rio_show
+from matplotlib.pyplot import subplots, savefig
+from matplotlib_scalebar.scalebar import ScaleBar
+from matplotlib.colors import LinearSegmentedColormap
 
 def coord_2_img(transform, x, y):
     """ 
@@ -105,3 +116,64 @@ with rio_open("../../data/helvellyn/Helvellyn-50.tif") as dem:
     
     # calculate the viewshed
     output = viewshed(x0, y0, 20000, 1.8, 100, dem_data, dem.transform)
+
+# output image
+fig, my_ax = subplots(1, 1, figsize=(16, 10))
+my_ax.set_title("Viewshed Analysis")
+
+	# draw dem
+rio_show(
+	dem_data,
+	ax=my_ax,
+	transform = dem.transform,
+	cmap = 'viridis',
+	)
+
+	# draw dem as contours
+rio_show(
+	dem_data,
+	ax=my_ax,
+	contour=True,
+	transform = dem.transform,
+	colors = ['white'],
+	linewidths = [0.5],
+	)
+
+# add viewshed
+rio_show(
+	output,
+	ax=my_ax,
+	transform=dem.transform,
+	cmap = LinearSegmentedColormap.from_list('binary_viewshed', [(0, 0, 0, 0), (1, 0, 0, 0.5)], N=2)
+	)
+
+# add origin point
+GeoSeries(Point(x0, y0)).plot(
+	ax = my_ax,
+	markersize = 60,
+	color = 'black',
+	edgecolor = 'white'
+	)
+
+# add a colour bar
+fig.colorbar(ScalarMappable(norm=Normalize(vmin=floor(dem_data.min()), vmax=ceil(dem_data.max())), cmap='viridis'), ax=my_ax, pad=0.01)
+
+# add north arrow
+x, y, arrow_length = 0.97, 0.99, 0.1
+my_ax.annotate('N', xy=(x, y), xytext=(x, y-arrow_length),
+	arrowprops=dict(facecolor='black', width=5, headwidth=15),
+	ha='center', va='center', fontsize=20, xycoords=my_ax.transAxes)
+
+# add scalebar
+my_ax.add_artist(ScaleBar(dx=1, units="m", location="lower right"))
+
+# add legend for point
+my_ax.legend(
+	handles=[
+		Patch(facecolor=(1, 0, 0, 0.5), edgecolor=None, label=f'Visible Area'),
+		Line2D([0], [0], marker='o', color=(1,1,1,0), label='Viewshed Origin', markerfacecolor='black', markersize=8)
+	], loc='lower left')
+
+# save the result
+savefig('./out/7.png', bbox_inches='tight')
+print("done!")
