@@ -148,9 +148,15 @@ def astar_path(G, source, target, heuristic):
         #  be assessed first.
         estimated_dist = dist_from_start + dist_to_end
         
-        print(estimated_dist)
-        exit
-                
+        ''' Section 6: Adding this node to the heap queue for future assessment in next while loop iteration'''
+        
+        # increment counter and push to heap
+        counter += 1
+        heappush(queue, (estimated_dist, counter, neighbour, dist_from_start, cur_node))
+
+    # if the loop finishes, we didn't find a route - raise an exception
+    raise NetworkXNoPath(f"Node {target} not reachable from {source}")
+    
 # create a MultiDiGraph from an XML dataset from OpenStreetMap
 graph = graph_from_xml('../../data/kaliningrad/kaliningrad.xml')
 
@@ -181,6 +187,8 @@ try:
     # calculate the shortest path across the network
     shortest_path = astar_path(graph, from_node, to_node, ellipsoidal_distance)
 
+    print(shortest_path)
+    
 # catch exception for no path available
 except NodeNotFound:
     print("Sorry, there is no path between those locations in the provided network")
@@ -190,3 +198,5 @@ except NodeNotFound:
 except NetworkXNoPath:
     print("Sorry, there is no path between those locations in the provided network")
     exit()
+    
+    
