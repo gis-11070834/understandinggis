@@ -219,7 +219,7 @@ try:
     #print(shortest_path)
     
     # convert linestring to GeoSeries and project to UTM zone 34
-    wgs84 = "+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs +type=crs"
+    wgs84 = "+proj=longlat +datum=WGS84 +no_defs +type=crs"
     utm34 = "+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs +type=crs"
     path = GeoSeries(path_to_linestring(from_point, shortest_path, to_point), crs=wgs84).to_crs(utm34)
     
