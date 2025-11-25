@@ -37,5 +37,5 @@ to_node = node_list[to_node_id]
 # print the 'from' and 'to' nodes to the console
 #print(graph.nodes()[from_node], graph.nodes()[to_node])
 
-distance = ellipsoidal_distance(from_node, to_node)
-print(distance)
+# call to test ellipsoidal function
+print(ellipsoidal_distance(from_node, to_node))
