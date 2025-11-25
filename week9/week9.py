@@ -5,6 +5,13 @@ from pyproj import Geod
 from sys import exit
 from networkx import NodeNotFound, NetworkXNoPath
 from heapq import heappush, heappop
+from shapely.geometry import LineString
+from geopandas import GeoSeries
+from geopandas import read_file
+from shapely.geometry import Point
+from matplotlib.patches import Patch
+from matplotlib_scalebar.scalebar import ScaleBar
+from matplotlib.pyplot import subplots, savefig, Line2D
 
 def ellipsoidal_distance(node_a, node_b):
     """
@@ -115,48 +122,70 @@ def astar_path(G, source, target, heuristic):
         # get the neighbours for the current node (under assessment)
         for neighbour, edge_data in G[cur_node].items():
 
-        # work out the network distance to this neighbour from the start of the path - this
+            # work out the network distance to this neighbour from the start of the path - this
             #     is simply the distance to the current node (which we already know), plus the 
             #     distance from that node to this neighbour (which is stored in the edge data)
             dist_from_start = cur_net_dist + edge_data[0]['length']
         
-        ''' Section 4: Seeing if we have already seen this neighbour '''
+            ''' Section 4: Seeing if we have already seen this neighbour '''
       
-        # have we already seen this neighbour?
-        for neighbour in distances:
+            # have we already seen this neighbour?
+            if neighbour in distances:
 
-            # as we have been get the network distance from the start via the previous and straight 
-            #  line distance to the end
-            previous_dist_from_start, dist_to_end = distances[neighbour]
+                # as we have been get the network distance from the start via the previous and straight 
+                #  line distance to the end
+                previous_dist_from_start, dist_to_end = distances[neighbour]
 
-            # if the previous path we found to this node is shorter, abandon this new path
-            if previous_dist_from_start <= dist_from_start:
-                continue
+                # if the previous path we found to this node is shorter, abandon this new path
+                if previous_dist_from_start <= dist_from_start:
+                    continue
                 
             # if we haven't seen this neighbour before, calculate the straight line distance to the end
-        else:
-            dist_to_end = heuristic(neighbour, target)
+            else:
+                dist_to_end = heuristic(neighbour, target)
         
-        ''' Section 5: Calculate the estimated distance for the route through that node '''
+            ''' Section 5: Calculate the estimated distance for the route through that node '''
         
-        # add the two distances to the distances dictionary
-        distances[neighbour] = (dist_from_start, dist_to_end)
+            # add the two distances to the distances dictionary
+            distances[neighbour] = (dist_from_start, dist_to_end)
 
-        # work out the estimated distance for this path (the network distance from the start to 
-        #  this node + the straight line distance from this node to the end). This will act as the 
-        #  priority value for our heap queue - the route with the shortest estimated didstance will 
-        #  be assessed first.
-        estimated_dist = dist_from_start + dist_to_end
+            # work out the estimated distance for this path (the network distance from the start to 
+            #  this node + the straight line distance from this node to the end). This will act as the 
+            #  priority value for our heap queue - the route with the shortest estimated didstance will 
+            #  be assessed first.
+            estimated_dist = dist_from_start + dist_to_end
         
-        ''' Section 6: Adding this node to the heap queue for future assessment in next while loop iteration'''
+            ''' Section 6: Adding this node to the heap queue for future assessment in next while loop iteration'''
         
-        # increment counter and push to heap
-        counter += 1
-        heappush(queue, (estimated_dist, counter, neighbour, dist_from_start, cur_node))
+            # increment counter and push to heap
+            counter += 1
+            heappush(queue, (estimated_dist, counter, neighbour, dist_from_start, cur_node))
 
     # if the loop finishes, we didn't find a route - raise an exception
     raise NetworkXNoPath(f"Node {target} not reachable from {source}")
-    
+
+def path_to_linestring(start_point, path_list, end_point):
+	"""
+	Convert a shortest path to a LineString object
+	"""
+	# initialise the list with the start point
+	line = [start_point]
+
+	# loop through each node in the shortest path and load into list
+	for n in path_list:
+
+		# get the relevant node from the graph with lat lng data
+		node = graph.nodes(data=True)[n]
+
+		# load the lat lng data into the lineString
+		line.append(Point(node['x'], node['y']))  ## MISSING LINE (see your spatial index for how to get coordinates from nodes...)
+
+	# append end point to list
+	line.append(end_point)
+
+	# store as a LineString
+	return LineString(line)
+
 # create a MultiDiGraph from an XML dataset from OpenStreetMap
 graph = graph_from_xml('../../data/kaliningrad/kaliningrad.xml')
 
@@ -187,7 +216,14 @@ try:
     # calculate the shortest path across the network
     shortest_path = astar_path(graph, from_node, to_node, ellipsoidal_distance)
 
-    print(shortest_path)
+    #print(shortest_path)
+    
+    # convert linestring to GeoSeries and project to UTM zone 34
+    wgs84 = "+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs +type=crs"
+    utm34 = "+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs +type=crs"
+    path = GeoSeries(path_to_linestring(from_point, shortest_path, to_point), crs=wgs84).to_crs(utm34)
+    
+    #print(path)
     
 # catch exception for no path available
 except NodeNotFound:
@@ -198,5 +234,78 @@ except NodeNotFound:
 except NetworkXNoPath:
     print("Sorry, there is no path between those locations in the provided network")
     exit()
-    
-    
+
+# open buildings and water shapefiles
+buildings = read_file('../../data/kaliningrad/buildings.shp').to_crs(utm34)
+water = read_file('../../data/kaliningrad/water.shp').to_crs(utm34)
+
+# create map axis object, remove axes, set title
+fig, my_ax = subplots(1, 1, figsize=(16, 10))
+my_ax.axis('off')
+my_ax.set(title="The 4 Bridges of Kaliningrad")
+
+# set bounds
+buffer = 1000
+my_ax.set_xlim([path.geometry.iloc[0].bounds[0] - buffer, path.geometry.iloc[0].bounds[2] + buffer])
+my_ax.set_ylim([path.geometry.iloc[0].bounds[1] - buffer, path.geometry.iloc[0].bounds[3] + buffer])
+
+# add the water
+water.plot(
+	ax=my_ax,
+	color='#a6cee3',
+	linewidth = 1,
+	zorder=1)
+
+# add the buildings
+buildings.plot(
+	ax=my_ax,
+	color='grey',
+	linewidth = 1,
+	zorder=2)
+
+# add the path
+path.plot(
+	ax=my_ax,
+	color='#984ea3',
+	linewidth = 3,
+	zorder=4)
+
+# add the start point
+GeoSeries(Point(from_point), crs=wgs84).to_crs(utm34).plot(
+  ax = my_ax,
+  markersize = 60,
+  color = 'blue',
+  edgecolor = 'black',
+  zorder=5)
+
+# add the end point
+GeoSeries(Point(to_point), crs=wgs84).to_crs(utm34).plot(
+  ax = my_ax,
+  markersize = 60,
+  color = 'red',
+  edgecolor = 'black',
+	zorder=6)
+
+# manually draw a legend
+my_ax.legend([
+	Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markeredgecolor='black', markersize=8),
+	Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markeredgecolor='black', markersize=8),
+    Patch(facecolor='grey'),
+    Patch(facecolor='#a6cee3', edgecolor='#a6cee3'),
+	Line2D([0], [0], color='#984ea3', lw=3),
+	Line2D([0], [0], color='#4daf4a', lw=3)],
+	['Origin', 'Destination', 'Buildings', 'Water', 'Path', 'Path(NX)'], loc='lower right')
+
+# add north arrow
+x, y, arrow_length = 0.99, 0.99, 0.1
+my_ax.annotate('N', xy=(x, y), xytext=(x, y-arrow_length),
+	arrowprops=dict(facecolor='black', width=5, headwidth=15),
+	ha='center', va='center', fontsize=20, xycoords=my_ax.transAxes)
+
+# add scalebar
+my_ax.add_artist(ScaleBar(dx=1, units="m", location="lower left"))
+
+# save the result
+savefig(f'./out/10.png', bbox_inches='tight')
+print("done!")
+
