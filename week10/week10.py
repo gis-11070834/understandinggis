@@ -53,6 +53,82 @@ def line_of_sight_coords(r0, c0, z0, r1, c1, radius, dsm_data):
 
     return visible_coords
 
+def distortion_worker(geo_string, proj_string, g, minx, miny, maxx, maxy, minr=10000, maxr=1000000, samples=10000):
+
+    # construct transformer
+    transformer = Transformer.from_crs(CRS.from_proj4(geo_string), CRS.from_proj4(proj_string), always_xy=True)
+
+    return evaluate_distortion(g, transformer, minx, miny, maxx, maxy, minr, maxr, samples)
+
+def gvi_worker(x0, y0, radius_m, observer_height, dsm, trees, transform):
+    """
+    * Calculate Green Visibility Index based on Labib et al. (2021)
+    *   Note that there is no target height in this case, as we are using 
+    *   the DSM (so it is 0).
+    """
+    
+    # connect gvi_worker to the shared memory
+    # existing_dsm_shm represents the connection and dsm_data is the values stores in the shared memory
+    existing_dsm_shm, dsm_data = attach_shared_memory(*dsm)
+    existing_trees_shm, trees_data = attach_shared_memory(*trees)
+
+    try: 
+        # convert observer location to raster row/col
+        r0, c0 = coord_2_img(transform, x0, y0)
+        
+        # catch if the dataset is outside the dataset
+        if not (0 <= r0 < dsm_data.shape[0]) or not (0 <= c0 < dsm_data.shape[1]):
+            print(f"ERROR: data point {x0},{y0} outside of dataset")
+            return None
+    
+        # radius in pixels (use absolute of pixel x-scale; assumes square pixels)
+        radius_px = int(radius_m / abs(transform[0]))
+    
+        # observer absolute elevation: DSM value at observer plus observer height
+        observer_abs_elev = dsm_data[r0, c0] + observer_height
+    
+        # collect visible coords in a set (to avoid duplicates)
+        visible = set()
+    
+        # add the observer location
+        visible.add((int(r0), int(c0)))
+    
+        # iterate perimeter points to cast rays
+        for rr, cc in column_stack(circle_perimeter(r0, c0, radius_px)):
+    
+            # for each line, get visible coords and add to set
+            for rc in line_of_sight_coords(r0, c0, observer_abs_elev, int(rr), int(cc), radius_px, dsm_data):
+                visible.add(rc)
+    
+        # convert to numpy arrays for fast indexing and ensure indices are valid
+        rows, cols = zip(*visible)
+        rows = array(rows, dtype=intp) # intp is a convenient alias for the default integer type used by the system
+        cols = array(cols, dtype=intp)
+    
+        # count visible tree pixels
+        visible_trees = np_sum(trees_data[rows, cols] == 1)
+    
+        # return GVI value (proportion of visible cells that are tree pixels)
+        return visible_trees / float(len(rows))
+    
+    finally:
+        existing_dsm_shm.close()
+        existing_trees_shm.close()
+
+def attach_shared_memory(shm_name, shape, dtype_str):
+    """
+    * Attach to raster dataset in shared memory 
+    * Returns: (memory reference, band dataset)
+    """
+    # get reference to memory location of the shared dataset
+    existing_shm = SharedMemory(name=shm_name)
+    
+    # construct a numpy array object using that location in memory
+    shared_data = ndarray(shape, dtype=dtype(dtype_str), buffer=existing_shm.buf)
+    
+    # return a tuple in the form (memory reference, numpy array)
+    return (existing_shm, shared_data)
+
 # only run if whole code executed
 if __name__ == "__main__":
     
@@ -64,11 +140,131 @@ if __name__ == "__main__":
             dsm_data = dsm.read(1)
             trees_data = trees.read(1)
             
-            # reading data into a geodataframe variable called schools
-            schools = read_file("../../data/bolton/primary_schools.shp")
+            try:
+                # put DSM in shared memory
+                dsm_nbytes = dsm_data.size * dsm_data.dtype.itemsize
+                dsm_shm = SharedMemory(create=True, size=dsm_nbytes)
+                dsm_shared_arr = ndarray(dsm_data.shape, dtype=dsm_data.dtype, buffer=dsm_shm.buf)
+                dsm_shared_arr[:] = dsm_data[:]
+                
+                # put trees in shared memory
+                trees_nbytes = trees_data.size * trees_data.dtype.itemsize
+                trees_shm = SharedMemory(create=True, size=trees_nbytes)
+                trees_shared_arr = ndarray(trees_data.shape, dtype=trees_data.dtype, buffer=trees_shm.buf)
+                trees_shared_arr[:] = trees_data[:]
+                
+                # reading data into a geodataframe variable called schools
+                schools = read_file("../../data/bolton/primary_schools.shp")
             
-            # use .crs.to_epsg() to verify that the epsg code matches for all three
-            print(dsm_data.crs.to_epsg())
-            print(trees.crs.to_epsg())
-            print(schools.crs.to_epsg())
+                # use .crs.to_epsg() to verify that the epsg code matches for all three
+                print(f"DSM EPSG: (dsm_data.crs.to_epsg())")
+                print(f"Trees EPSG: (trees.crs.to_epsg())")
+                print(f"Schools EPSG: (schools.crs.to_epsg())")
+                
+                start = perf_counter()
+                
+                tasks = []
+                
+                for idx, school in schools.iterrows():
+                    
+                    # this is a tuple (id, dictionary), where the dictionary reflects the argument for gvi_worker()
+                    tasks.append((idx, {
+                        'x0': school.geometry.x,	# COMPLETE (x coordinate of origin)
+                        'y0': school.geometry.y,	# COMPLETE (y coordinate of origin)
+                        'radius_m': 800,
+                        'observer_height': 1.7,
+                        'dsm': (dsm_shm.name, dsm_data.shape, str(dsm_data.dtype)),
+                        'trees': (trees_shm.name, trees_data.shape, str(trees_data.dtype)) ,	# COMPLETE  (tuple for info on the trees shared memory object)
+                        'transform': dsm.transform
+                        }))
+                
+                # Create an instance of ProcessPoolExecutor
+                with ProcessPoolExecutor() as executor:
+                    
+                    # loop thrugh tasks launching a process for each task to call the distortion_worker function
+                    # submit tasks and keep mapping future -> task idx for assignment
+                    future_map = {}
+                    for task in tasks:
+
+                        # use variable expansion to get the id of the projection and the function arguments
+                        idx, args = task
+
+                        # submit the task to the executor - this calls the function with the arguments in task_args
+                        future = executor.submit(gvi_worker, **args)
+
+                        # record the ID so that we can assign the correct value later
+                        future_map[future] = idx
+
+                    # process the future objects as they complete using as_completed()
+                    # as_completed returns an iterator over a list of future instances that only stops once completed
+                    # future_map.keys gives a list of all of our futures as keys in dictionary
+                    for future in as_completed(future_map.keys()):
+
+                        # get the ID for the projection in this process
+                        idx = future_map[future]
+                        
+                        try:
+                            schools.loc[idx, 'gvi'] = future.result()
+                            
+                        except Exception as e:
+                            print(f"ERROR: Worker raised an exception: {e}")
+                            schools.loc[idx, "gvi"] = nan
+                    
+                    # report how many processes were launched
+                    print(f"Launched {len(executor._processes)} processes...")
+                    
+                    # report performance counter results 
+                    print(f"{len(schools.index)} Schools analysed in {perf_counter() - start:.2f} seconds.")
+                    
             
+                # Plot DEM + GVI points
+                fig, my_ax = subplots(1, 1, figsize=(16, 10))
+                my_ax.set_title("Green Visibility Index (GVI) per school")
+                
+                # show trees raster as context (transparent)
+                rio_show(
+                    trees,
+                    ax=my_ax,
+                    transform = trees.transform,
+                    cmap = 'Greens',
+                    alpha=0.4,
+                )
+                
+                # Plot schools coloured by computed GVI; use only the selected subset for clarity
+                schools.plot(
+                    ax = my_ax,
+                    column='gvi',
+                    cmap = 'Greens',
+                    markersize = 120,
+                    edgecolor = 'black',
+                )
+                
+                # add a colour bar for GVI
+                if schools["gvi"].notna().any():
+                    fig.colorbar(
+                        ScalarMappable(norm=Normalize(vmin=schools["gvi"].min(), vmax=schools["gvi"].max()), cmap='Greens'),
+                        ax=my_ax,
+                        pad=0.01,
+                        label="GVI"
+                    )
+                
+                # add north arrow
+                x, y, arrow_length = 0.97, 0.99, 0.1
+                my_ax.annotate('N', xy=(x, y), xytext=(x, y-arrow_length),
+                    arrowprops=dict(facecolor='black', width=5, headwidth=15),
+                    ha='center', va='center', fontsize=20, xycoords=my_ax.transAxes)
+                
+                # add scalebar
+                my_ax.add_artist(ScaleBar(dx=1, units="m", location="lower right"))
+                
+                # output
+                savefig('./out/9.png', bbox_inches='tight')
+            
+            finally:
+                # close link to shared memory
+                dsm_shm.close()
+                trees_shm.close()
+
+                # clean up shared memory
+                dsm_shm.unlink()
+                trees_shm.unlink()
