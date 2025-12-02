@@ -70,7 +70,8 @@ if __name__ == "__main__":
     
     # create an Executor to run GVI calculations in parallel
     with ProcessPoolExecutor() as executor:
-
+        
+        # loop thrugh tasks launching a process for each task to call the distortion_worker function
         # submit tasks and keep mapping future -> task idx for assignment
         future_map = {}
         for task in tasks:
@@ -84,8 +85,22 @@ if __name__ == "__main__":
             # record the ID so that we can assign the correct value later
             future_map[future] = idx
 
+        # process the future objects as they complete using as_completed()
+        # as_completed returns an iterator over a list of future instances that only stops once completed
+        # future_map.keys gives a list of all of our futures as keys in dictionary
+        for future in as_completed(future_map.keys()):
+
+            # get the ID for the projection in this process
+            idx = future_map[future]
+
+            # get the result for this future object and load into the schools GeoDataFrame
+            results.loc[idx, ['Ep', 'Es', 'Ea']] = future.result()
+
         # report how many processes were launched
         print(f"Launched {len(executor._processes)} processes...")
-
+        
+        #print the result given
+        print(DataFrame(results).sort_values('Ea'))
+        
     # print the results, sorted by area distortion
-    #print(f"\nCompleted in {perf_counter() - start:.2f} seconds.")
+    print(f"\nCompleted in {perf_counter() - start:.2f} seconds.")
