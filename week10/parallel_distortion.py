@@ -51,13 +51,41 @@ if __name__ == "__main__":
     # start timer
     start = perf_counter()
 
+    tasks = []
+    
     # initialise a PyProj Transformer to transform coordinates
     results = DataFrame(projections)
     for idx, p in results.iterrows():
 
-        # get proj string
-        proj_string = p['proj']
+        # this is a tuple (id, dictionary), where the dictionary is the arguments for distortion_worker
+        tasks.append((idx, {
+            'geo_string': geo_string, 
+            'proj_string': p['proj'], 
+            'g': g, 
+            'minx': minx, 
+            'miny': miny, 
+            'maxx': maxx, 
+            'maxy': maxy
+        }))
+    
+    # create an Executor to run GVI calculations in parallel
+    with ProcessPoolExecutor() as executor:
+
+        # submit tasks and keep mapping future -> task idx for assignment
+        future_map = {}
+        for task in tasks:
+
+            # use variable expansion to get the id of the projection and the function arguments
+            idx, args = task
+
+            # submit the task to the executor - this calls the function with the arguments in task_args
+            future = executor.submit(distortion_worker, **args)
+
+            # record the ID so that we can assign the correct value later
+            future_map[future] = idx
+
+        # report how many processes were launched
+        print(f"Launched {len(executor._processes)} processes...")
 
     # print the results, sorted by area distortion
-    #print(DataFrame(results).sort_values('Ea'))
-    print(f"\nCompleted in {perf_counter() - start:.2f} seconds.")
+    #print(f"\nCompleted in {perf_counter() - start:.2f} seconds.")
